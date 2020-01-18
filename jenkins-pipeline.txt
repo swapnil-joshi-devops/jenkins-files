@@ -1,0 +1,89 @@
+#!/usr/bin/env groovy
+
+pipeline {
+   agent {
+      
+       label {
+        label ""
+      
+		}
+  }
+      tools {
+        maven 'M2_HOME'       
+    }
+   
+  stages {
+       
+    stage('Checkout') {
+       
+      steps {
+         
+checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/swapnil-joshi-devops/profilepplication.git']]])
+
+		echo "Checked out  code successfully"
+		script {
+		   FAILED_STAGE='Checkout'
+			
+			  GIT_NAME = sh script: 'git --no-pager show -s --format=\'%cn\' $GIT_COMMIT', returnStdout: true
+		      GIT_EMAIL = sh script: 'git --no-pager show -s --format=\'%ae\' $GIT_COMMIT', returnStdout: true
+		      GIT_ID = sh script: 'git --no-pager show -s --format=\'%H\' $GIT_COMMIT', returnStdout: true
+		      GIT_TIME = sh script: 'git --no-pager show -s --format=\'%ci\' $GIT_COMMIT', returnStdout: true
+		      GIT_MSG = sh script: 'git log -1 --pretty=%B', returnStdout: true
+		      			 
+			echo "${GIT_MSG}"
+			  
+			  GIT_EMAIL = "${GIT_EMAIL}".replaceAll("\n", "");
+			  	echo "${GIT_EMAIL}"
+			 
+			  			 
+        }
+      }
+    
+	}
+	
+	stage('Build') {
+	
+      steps {          
+        script{
+			sh """
+				  mvn  -X -e clean install 
+				  """
+        }
+	
+      }
+	  
+    }
+	
+	stage('deploy'){
+	steps {          
+        script{
+        sh """
+        cd /var/lib/jenkins/workspace/future-airline/dev-pipeline/target
+        ls
+        """
+        sshagent(['SprServer']){
+            sh "ssh -o StrictHostKeyChecking=no ec2-user@52.91.28.226"
+            sh "scp -r /var/lib/jenkins/workspace/future-airline/dev-pipeline/target/*.jar ec2-user@52.91.28.226:/home/spring"			
+        }
+        sshPublisher(publishers: [sshPublisherDesc(configName: 'appserver', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'cd /home/spring;pkill -f java -jar;nohup java -jar *.jar &', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '.', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '*.jar')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+
+    }
+	
+}
+    }
+	}
+	post {
+         success {
+	        echo "success"
+        }
+        failure {
+		     echo " build failed"
+		 }
+	
+     }
+	 
+    
+    
+	 
+
+}

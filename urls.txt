@@ -1,0 +1,5 @@
+Jenkins:
+http://ec2-54-84-38-4.compute-1.amazonaws.com:8080
+
+Cloudwatch dashboard:
+https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=future-airline-dashboard
